@@ -13,7 +13,6 @@ export const getMatches = async () => {
       *,
       stadiums (
         name,
-        team,
         capacity,
         price
       )
@@ -21,7 +20,13 @@ export const getMatches = async () => {
     .order('date', { ascending: true })
   
   if (error) throw error
-  return data
+  
+  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
+  return data.map(match => ({
+    ...match,
+    club1: match.club1 || 'Manchester United',
+    club2: match.club2 || match.opponent || 'Liverpool'
+  }))
 }
 
 // Hàm lấy danh sách sân vận động
@@ -65,7 +70,6 @@ export const getMatchesByStatus = async (status) => {
       *,
       stadiums (
         name,
-        team,
         capacity,
         price
       )
@@ -74,7 +78,13 @@ export const getMatchesByStatus = async (status) => {
     .order('date', { ascending: true })
   
   if (error) throw error
-  return data
+  
+  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
+  return data.map(match => ({
+    ...match,
+    club1: match.club1 || 'Manchester United',
+    club2: match.club2 || match.opponent || 'Liverpool'
+  }))
 }
 
 // Hàm lấy danh sách trận đấu theo đội bóng
@@ -85,16 +95,21 @@ export const getMatchesByTeam = async (team) => {
       *,
       stadiums (
         name,
-        team,
         capacity,
         price
       )
     `)
-    .eq('home_team', team)
+    .or(`club1.eq.${team},club2.eq.${team}`)
     .order('date', { ascending: true })
   
   if (error) throw error
-  return data
+  
+  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
+  return data.map(match => ({
+    ...match,
+    club1: match.club1 || 'Manchester United',
+    club2: match.club2 || match.opponent || 'Liverpool'
+  }))
 }
 
 // Hàm đặt vé
@@ -117,15 +132,22 @@ export const getUserBookings = async (userId) => {
       matches (
         *,
         stadiums (
-          name,
-          team
+          name
         )
       )
     `)
     .eq('user_id', userId)
   
   if (error) throw error
-  return data
+  
+  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
+  return data.map(booking => {
+    if (booking.matches) {
+      booking.matches.club1 = booking.matches.club1 || 'Manchester United';
+      booking.matches.club2 = booking.matches.club2 || booking.matches.opponent || 'Liverpool';
+    }
+    return booking;
+  })
 }
 
 // Hàm lấy thông tin profile

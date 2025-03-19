@@ -4,13 +4,61 @@ import { FaFutbol, FaSquare } from 'react-icons/fa'
 import { motion, AnimatePresence } from 'framer-motion'
 import FadeIn from '../components/animations/FadeIn'
 import Skeleton from '../components/Skeleton'
-import LeagueSelector from '../components/LeagueSelector'
+// import LeagueSelector from '../components/LeagueSelector'
+
+// Component to select league
+const LeagueSelector = ({ selectedLeague, onChange }) => {
+  const leagues = [
+    { id: 'premier-league', name: 'Premier League' },
+    { id: 'laliga', name: 'La Liga' },
+    { id: 'bundesliga', name: 'Bundesliga' },
+    { id: 'serie-a', name: 'Serie A' },
+    { id: 'ligue-1', name: 'Ligue 1' }
+  ]
+  
+  return (
+    <div className="flex flex-wrap justify-center mb-6 space-x-2">
+      {leagues.map(league => (
+        <button
+          key={league.id}
+          className={`px-4 py-2 rounded-full text-sm font-semibold mb-2 ${
+            selectedLeague === league.id
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+          }`}
+          onClick={() => onChange(league.id)}
+        >
+          {league.name}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 function LiveScores() {
   const [liveMatches, setLiveMatches] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedLeague, setSelectedLeague] = useState('premier-league')
+
+  // Team logos mapping
+  const teamLogos = {
+    'Manchester United': 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg',
+    'Liverpool': 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg',
+    'Arsenal': 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg',
+    'Chelsea': 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg',
+    'Barcelona': 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
+    'Real Madrid': 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg',
+    'Manchester City': 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg',
+    'Tottenham': 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg',
+    'Bayern Munich': 'https://upload.wikimedia.org/wikipedia/commons/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg',
+    'Borussia Dortmund': 'https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg',
+    'Juventus': 'https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg',
+    'Inter Milan': 'https://upload.wikimedia.org/wikipedia/commons/0/05/FC_Internazionale_Milano_2021.svg',
+    'PSG': 'https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg',
+    'Monaco': 'https://upload.wikimedia.org/wikipedia/en/e/ea/AS_Monaco_FC.svg',
+    'Atletico Madrid': 'https://upload.wikimedia.org/wikipedia/en/f/f4/Atletico_Madrid_2017_logo.svg'
+  }
 
   useEffect(() => {
     const fetchLiveScores = async () => {
@@ -118,8 +166,16 @@ function LiveScores() {
       className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-4"
     >
       <div className="flex items-center justify-between">
-        <div className="flex-1 text-right">
-          <h3 className="text-lg font-semibold">{match.homeTeam}</h3>
+        <div className="flex-1 text-right flex items-center justify-end">
+          <h3 className="text-lg font-semibold mr-3">{match.homeTeam}</h3>
+          <img 
+            src={teamLogos[match.homeTeam] || `https://via.placeholder.com/40?text=${match.homeTeam.charAt(0)}`} 
+            alt={match.homeTeam} 
+            className="w-12 h-12 object-contain"
+            onError={(e) => {
+              e.target.src = `https://via.placeholder.com/40?text=${match.homeTeam.charAt(0)}`;
+            }}
+          />
         </div>
         <div className="px-6">
           <div className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold">
@@ -129,7 +185,15 @@ function LiveScores() {
             {match.minute}'
           </div>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 flex items-center">
+          <img 
+            src={teamLogos[match.awayTeam] || `https://via.placeholder.com/40?text=${match.awayTeam.charAt(0)}`} 
+            alt={match.awayTeam} 
+            className="w-12 h-12 object-contain mr-3"
+            onError={(e) => {
+              e.target.src = `https://via.placeholder.com/40?text=${match.awayTeam.charAt(0)}`;
+            }}
+          />
           <h3 className="text-lg font-semibold">{match.awayTeam}</h3>
         </div>
       </div>
@@ -148,7 +212,7 @@ function LiveScores() {
 
       <LeagueSelector 
         selectedLeague={selectedLeague}
-        onLeagueChange={setSelectedLeague}
+        onChange={setSelectedLeague}
       />
 
       {error && (

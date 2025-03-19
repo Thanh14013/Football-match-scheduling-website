@@ -23,6 +23,24 @@ function MatchSchedule() {
 
   const navigate = useNavigate()
 
+  // Team logos mapping
+  const teamLogos = {
+    'Manchester United': 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg',
+    'Liverpool': 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg',
+    'Arsenal': 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg',
+    'Chelsea': 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg',
+    'Barcelona': 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
+    'Real Madrid': 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg',
+    'Manchester City': 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg',
+    'Tottenham': 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg',
+    'Bayern Munich': 'https://upload.wikimedia.org/wikipedia/commons/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg',
+    'Borussia Dortmund': 'https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg',
+    'Juventus': 'https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg',
+    'Inter Milan': 'https://upload.wikimedia.org/wikipedia/commons/0/05/FC_Internazionale_Milano_2021.svg',
+    'PSG': 'https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg',
+    'Monaco': 'https://upload.wikimedia.org/wikipedia/en/e/ea/AS_Monaco_FC.svg'
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -59,7 +77,8 @@ function MatchSchedule() {
     if (searchTerm) {
       filtered = filtered.filter(match => 
         match.stadiums.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        match.opponent.toLowerCase().includes(searchTerm.toLowerCase())
+        match.club1?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        match.club2?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -71,7 +90,7 @@ function MatchSchedule() {
 
     if (selectedTeam !== 'All Teams') {
       filtered = filtered.filter(match => 
-        match.stadiums.name === selectedTeam || match.opponent === selectedTeam
+        match.club1 === selectedTeam || match.club2 === selectedTeam
       )
     }
 
@@ -87,6 +106,11 @@ function MatchSchedule() {
   const renderMatchCard = (match) => {
     if (!match || !match.stadiums) return null;
     
+    // Get home team and away team
+    const homeTeam = match.club1 || "Team 1";
+    const awayTeam = match.club2 || "Team 2";
+    const stadium = match.stadiums.name;
+    
     return (
       <FadeIn key={match.id}>
         <motion.div
@@ -100,13 +124,33 @@ function MatchSchedule() {
             <span className="text-sm text-gray-500 dark:text-gray-400">{match.time}</span>
           </div>
           
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-lg font-semibold">{match.stadiums.name}</div>
-            <div className="px-4 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">VS</div>
-            <div className="text-lg font-semibold">{match.opponent}</div>
-          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-300 text-center mb-2">{stadium}</div>
           
-          <div className="text-sm text-gray-600 dark:text-gray-300">{match.stadiums.name}</div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <img 
+                src={teamLogos[homeTeam] || `https://via.placeholder.com/40?text=${homeTeam.charAt(0)}`} 
+                alt={homeTeam} 
+                className="w-10 h-10 mr-2 object-contain"
+                onError={(e) => {
+                  e.target.src = `https://via.placeholder.com/40?text=${homeTeam.charAt(0)}`;
+                }}
+              />
+              <div className="text-lg font-semibold">{homeTeam}</div>
+            </div>
+            <div className="px-4 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm font-bold">VS</div>
+            <div className="flex items-center">
+              <div className="text-lg font-semibold">{awayTeam}</div>
+              <img 
+                src={teamLogos[awayTeam] || `https://via.placeholder.com/40?text=${awayTeam.charAt(0)}`} 
+                alt={awayTeam} 
+                className="w-10 h-10 ml-2 object-contain"
+                onError={(e) => {
+                  e.target.src = `https://via.placeholder.com/40?text=${awayTeam.charAt(0)}`;
+                }}
+              />
+            </div>
+          </div>
           
           <motion.button
             whileHover={{ scale: 1.05 }}
