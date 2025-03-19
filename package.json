@@ -1,0 +1,43 @@
+{
+  "name": "football-match-scheduling",
+  "version": "1.0.0",
+  "description": "Football Match Scheduling Website",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "server": "nodemon server/index.js",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install-client": "cd client && npm install",
+    "build-client": "cd client && npm run build",
+    "setup": "npm install && npm run install-client"
+  },
+  "keywords": [
+    "football",
+    "scheduling",
+    "match"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "axios": "^1.6.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "framer-motion": "^10.18.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "nodemailer": "^6.9.7",
+    "react-intersection-observer": "^9.5.2",
+    "react-query": "^3.39.3",
+    "react-virtualized": "^9.22.5"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.1"
+  }
+}
