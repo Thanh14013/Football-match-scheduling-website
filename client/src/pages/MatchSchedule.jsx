@@ -5,11 +5,99 @@ import InfiniteScroll from '../components/InfiniteScroll'
 import Skeleton from '../components/Skeleton'
 import FadeIn from '../components/FadeIn'
 import { useNavigate } from 'react-router-dom'
-import { getMatches, getStadiums, getMatchesByStatus } from '../lib/supabase'
+import { getMatches, getStadiums, getMatchesByStatus, getTeams } from '../lib/supabase'
+
+// Dữ liệu mẫu để hiển thị khi không có dữ liệu từ Supabase
+const SAMPLE_MATCHES = [
+  {
+    id: 1,
+    date: '2024-07-10',
+    time: '19:30:00',
+    status: 'upcoming',
+    stadiums: {
+      id: 1,
+      name: 'Old Trafford',
+      capacity: 74140,
+      price: 50.00
+    },
+    club1: {
+      id: 1,
+      name: 'Manchester United',
+      logo_url: 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg'
+    },
+    club2: {
+      id: 2,
+      name: 'Liverpool',
+      logo_url: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg'
+    }
+  },
+  {
+    id: 2,
+    date: '2024-07-12',
+    time: '20:00:00',
+    status: 'upcoming',
+    stadiums: {
+      id: 3,
+      name: 'Emirates Stadium',
+      capacity: 60704,
+      price: 55.00
+    },
+    club1: {
+      id: 3,
+      name: 'Arsenal',
+      logo_url: 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg'
+    },
+    club2: {
+      id: 4,
+      name: 'Chelsea',
+      logo_url: 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg'
+    }
+  },
+  {
+    id: 3,
+    date: '2024-07-15',
+    time: '21:00:00',
+    status: 'upcoming',
+    stadiums: {
+      id: 5,
+      name: 'Camp Nou',
+      capacity: 99354,
+      price: 65.00
+    },
+    club1: {
+      id: 5,
+      name: 'Barcelona',
+      logo_url: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg'
+    },
+    club2: {
+      id: 6,
+      name: 'Real Madrid',
+      logo_url: 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg'
+    }
+  }
+];
+
+const SAMPLE_STADIUMS = [
+  { id: 1, name: 'Old Trafford', capacity: 74140, price: 50.00 },
+  { id: 2, name: 'Anfield', capacity: 53394, price: 45.00 },
+  { id: 3, name: 'Emirates Stadium', capacity: 60704, price: 55.00 },
+  { id: 4, name: 'Stamford Bridge', capacity: 41837, price: 60.00 },
+  { id: 5, name: 'Camp Nou', capacity: 99354, price: 65.00 }
+];
+
+const SAMPLE_TEAMS = [
+  { id: 1, name: 'Manchester United', logo_url: 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg' },
+  { id: 2, name: 'Liverpool', logo_url: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg' },
+  { id: 3, name: 'Arsenal', logo_url: 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg' },
+  { id: 4, name: 'Chelsea', logo_url: 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg' },
+  { id: 5, name: 'Barcelona', logo_url: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg' },
+  { id: 6, name: 'Real Madrid', logo_url: 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg' }
+];
 
 function MatchSchedule() {
   const [matches, setMatches] = useState([])
   const [stadiums, setStadiums] = useState([])
+  const [teams, setTeams] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   
@@ -45,10 +133,17 @@ function MatchSchedule() {
     const fetchData = async () => {
       try {
         setIsLoading(true)
+        setError(null)
         
         // Fetch stadiums
         const stadiumsData = await getStadiums()
-        setStadiums(stadiumsData)
+        // Nếu không có dữ liệu sân vận động, sử dụng dữ liệu mẫu
+        setStadiums(stadiumsData && stadiumsData.length > 0 ? stadiumsData : SAMPLE_STADIUMS)
+        
+        // Fetch teams
+        const teamsData = await getTeams()
+        // Nếu không có dữ liệu đội bóng, sử dụng dữ liệu mẫu
+        setTeams(teamsData && teamsData.length > 0 ? teamsData : SAMPLE_TEAMS)
         
         // Fetch matches based on status
         let matchesData
@@ -58,12 +153,25 @@ function MatchSchedule() {
           matchesData = await getMatchesByStatus(selectedStatus)
         }
         
+        // Nếu không có dữ liệu trận đấu, sử dụng dữ liệu mẫu
+        if (!matchesData || matchesData.length === 0) {
+          console.log('Không có dữ liệu trận đấu, sử dụng dữ liệu mẫu');
+          matchesData = SAMPLE_MATCHES
+        }
+        
         setMatches(matchesData)
         setFilteredMatches(matchesData.slice(0, 10))
         setIsLoading(false)
       } catch (error) {
         console.error('Error fetching data:', error)
         setError('Failed to load match schedule. Please try again later.')
+        
+        // Sử dụng dữ liệu mẫu khi có lỗi
+        setStadiums(SAMPLE_STADIUMS)
+        setTeams(SAMPLE_TEAMS)
+        setMatches(SAMPLE_MATCHES)
+        setFilteredMatches(SAMPLE_MATCHES.slice(0, 10))
+        
         setIsLoading(false)
       }
     }
@@ -72,25 +180,25 @@ function MatchSchedule() {
   }, [selectedStatus])
 
   useEffect(() => {
-    let filtered = matches.filter(match => match && match.stadiums);
+    let filtered = matches || [];
 
     if (searchTerm) {
       filtered = filtered.filter(match => 
-        match.stadiums.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        match.club1?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        match.club2?.toLowerCase().includes(searchTerm.toLowerCase())
+        (match.stadiums?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (match.club1?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (match.club2?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
     if (selectedStadium !== 'All Stadiums') {
       filtered = filtered.filter(match => 
-        match.stadiums.name === selectedStadium
+        match.stadiums?.name === selectedStadium
       )
     }
 
     if (selectedTeam !== 'All Teams') {
       filtered = filtered.filter(match => 
-        match.club1 === selectedTeam || match.club2 === selectedTeam
+        match.club1?.name === selectedTeam || match.club2?.name === selectedTeam
       )
     }
 
@@ -104,11 +212,11 @@ function MatchSchedule() {
   }, [matches, searchTerm, selectedStadium, selectedTeam, selectedDate])
 
   const renderMatchCard = (match) => {
-    if (!match || !match.stadiums) return null;
+    if (!match || !match.stadiums || !match.club1 || !match.club2) return null;
     
     // Get home team and away team
-    const homeTeam = match.club1 || "Team 1";
-    const awayTeam = match.club2 || "Team 2";
+    const homeTeam = match.club1.name;
+    const awayTeam = match.club2.name;
     const stadium = match.stadiums.name;
     
     return (
@@ -129,7 +237,7 @@ function MatchSchedule() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <img 
-                src={teamLogos[homeTeam] || `https://via.placeholder.com/40?text=${homeTeam.charAt(0)}`} 
+                src={match.club1.logo_url || `https://via.placeholder.com/40?text=${homeTeam.charAt(0)}`} 
                 alt={homeTeam} 
                 className="w-10 h-10 mr-2 object-contain"
                 onError={(e) => {
@@ -142,7 +250,7 @@ function MatchSchedule() {
             <div className="flex items-center">
               <div className="text-lg font-semibold">{awayTeam}</div>
               <img 
-                src={teamLogos[awayTeam] || `https://via.placeholder.com/40?text=${awayTeam.charAt(0)}`} 
+                src={match.club2.logo_url || `https://via.placeholder.com/40?text=${awayTeam.charAt(0)}`} 
                 alt={awayTeam} 
                 className="w-10 h-10 ml-2 object-contain"
                 onError={(e) => {
@@ -242,9 +350,9 @@ function MatchSchedule() {
               onChange={(e) => setSelectedTeam(e.target.value)}
             >
               <option>All Teams</option>
-              {stadiums.map(stadium => (
-                <option key={stadium.id} value={stadium.team}>
-                  {stadium.team}
+              {teams.map(team => (
+                <option key={team.id} value={team.name}>
+                  {team.name}
                 </option>
               ))}
             </select>

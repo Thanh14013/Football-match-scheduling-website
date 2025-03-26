@@ -1,42 +1,38 @@
-import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useSupabase } from './contexts/SupabaseContext'
-
-// Layouts
+import { Route, Routes } from 'react-router-dom'
+import { Suspense, lazy, useState, useEffect } from 'react'
 import MainLayout from './layouts/MainLayout'
-
-// Pages
-import Home from './pages/Home'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import BookMatch from './pages/BookMatch'
-import MatchSchedule from './pages/MatchSchedule'
-import LiveScores from './pages/LiveScores'
-import Profile from './pages/Profile'
-import NotFound from './pages/NotFound'
-
-// Components
+import LoadingScreen from './components/LoadingScreen'
+import { SupabaseProvider } from './contexts/SupabaseContext'
 import ProtectedRoute from './components/ProtectedRoute'
-import LoadingSpinner from './components/LoadingSpinner'
+
+// Lazy loaded components
+const Home = lazy(() => import('./pages/Home'))
+const MatchSchedule = lazy(() => import('./pages/MatchSchedule'))
+const LiveScores = lazy(() => import('./pages/LiveScores'))
+const BookMatch = lazy(() => import('./pages/BookMatch'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const Profile = lazy(() => import('./pages/Profile'))
+const ChangePassword = lazy(() => import('./pages/ChangePassword'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 
 function App() {
-  const { session, isLoading } = useSupabase()
   const [darkMode, setDarkMode] = useState(false)
 
   useEffect(() => {
-    // Check user preference for dark mode
+    // Kiểm tra cài đặt dark mode
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     setDarkMode(localStorage.getItem('darkMode') === 'true' || prefersDark)
   }, [])
 
   useEffect(() => {
-    // Apply dark mode class to document
+    // Áp dụng dark mode
     if (darkMode) {
       document.documentElement.classList.add('dark')
     } else {
       document.documentElement.classList.remove('dark')
     }
-    // Save preference to localStorage
+    // Lưu cài đặt vào localStorage
     localStorage.setItem('darkMode', darkMode)
   }, [darkMode])
 
@@ -44,31 +40,30 @@ function App() {
     setDarkMode(!darkMode)
   }
 
-  if (isLoading) {
-    return <LoadingSpinner />
-  }
-
   return (
-    <Routes>
-      <Route path="/" element={<MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode} />}>
-        <Route index element={<Home />} />
-        <Route path="login" element={!session ? <Login /> : <Navigate to="/" />} />
-        <Route path="register" element={!session ? <Register /> : <Navigate to="/" />} />
-        <Route path="book-match" element={
-          <ProtectedRoute>
-            <BookMatch />
-          </ProtectedRoute>
-        } />
-        <Route path="schedule" element={<MatchSchedule />} />
-        <Route path="live-scores" element={<LiveScores />} />
-        <Route path="profile" element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        } />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+    <SupabaseProvider>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/" element={<MainLayout darkMode={darkMode} toggleDarkMode={toggleDarkMode} />}>
+            <Route index element={<Home />} />
+            <Route path="schedule" element={<MatchSchedule />} />
+            <Route path="live-scores" element={<LiveScores />} />
+            <Route path="login" element={<Login />} />
+            <Route path="register" element={<Register />} />
+            
+            {/* Các trang cần xác thực */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="book-match" element={<BookMatch />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="change-password" element={<ChangePassword />} />
+            </Route>
+            
+            {/* Trang 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </SupabaseProvider>
   )
 }
 

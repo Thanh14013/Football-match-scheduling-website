@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSupabase } from '../contexts/SupabaseContext'
 import { useForm } from 'react-hook-form'
+import { motion } from 'framer-motion'
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaCheckCircle } from 'react-icons/fa'
 
 function Register() {
-  const { signUp } = useSupabase()
+  const { supabase } = useSupabase()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(false)
   
   const { register, handleSubmit, formState: { errors }, watch } = useForm()
   const password = watch('password', '')
@@ -17,7 +20,8 @@ function Register() {
     setError(null)
     
     try {
-      const { error } = await signUp({
+      // 1. Register user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -27,15 +31,38 @@ function Register() {
         }
       })
       
-      if (error) throw error
+      if (authError) throw authError
       
-      // In a real app with email confirmation, we would redirect to a confirmation page
-      // For this demo, we'll just redirect to login
-      navigate('/login')
+      if (authData?.user) {
+        // 2. Add additional user data to 'users' table
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: authData.user.id,
+              email: data.email,
+              full_name: data.fullName,
+              phone: data.phone || null,
+              avatar_url: null
+            }
+          ]);
+          
+        if (profileError) throw profileError;
+        
+        // Show success message
+        setSuccess(true);
+        
+        // Redirect to login page after 2 seconds
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
     } catch (error) {
-      setError(error.message || 'An error occurred during registration')
+      console.error('Registration error:', error);
+      setError(error.message || 'An error occurred during registration');
+      setSuccess(false);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -50,17 +77,34 @@ function Register() {
           </div>
         )}
         
+        {success && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-50 text-green-600 p-3 rounded-md mb-4 dark:bg-green-900/20 dark:text-green-400 flex items-center"
+          >
+            <FaCheckCircle className="mr-2" /> 
+            <span>Registration successful! Redirecting to login...</span>
+          </motion.div>
+        )}
+        
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Full Name
             </label>
-            <input
-              id="fullName"
-              type="text"
-              className="input"
-              {...register('fullName', { required: 'Full name is required' })}
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaUser className="text-gray-400" />
+              </div>
+              <input
+                id="fullName"
+                type="text"
+                className="input pl-10"
+                disabled={isLoading || success}
+                {...register('fullName', { required: 'Full name is required' })}
+              />
+            </div>
             {errors.fullName && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.fullName.message}</p>
             )}
@@ -70,39 +114,69 @@ function Register() {
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email
             </label>
-            <input
-              id="email"
-              type="email"
-              className="input"
-              {...register('email', { 
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address'
-                }
-              })}
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaEnvelope className="text-gray-400" />
+              </div>
+              <input
+                id="email"
+                type="email"
+                className="input pl-10"
+                disabled={isLoading || success}
+                {...register('email', { 
+                  required: 'Email is required',
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Invalid email address'
+                  }
+                })}
+              />
+            </div>
             {errors.email && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email.message}</p>
             )}
           </div>
           
           <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Phone Number (optional)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaPhone className="text-gray-400" />
+              </div>
+              <input
+                id="phone"
+                type="tel"
+                className="input pl-10"
+                disabled={isLoading || success}
+                {...register('phone')}
+              />
+            </div>
+          </div>
+          
+          <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              className="input"
-              {...register('password', { 
-                required: 'Password is required',
-                minLength: {
-                  value: 6,
-                  message: 'Password must be at least 6 characters'
-                }
-              })}
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaLock className="text-gray-400" />
+              </div>
+              <input
+                id="password"
+                type="password"
+                className="input pl-10"
+                disabled={isLoading || success}
+                {...register('password', { 
+                  required: 'Password is required',
+                  minLength: {
+                    value: 6,
+                    message: 'Password must be at least 6 characters'
+                  }
+                })}
+              />
+            </div>
             {errors.password && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password.message}</p>
             )}
@@ -112,15 +186,21 @@ function Register() {
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirm Password
             </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              className="input"
-              {...register('confirmPassword', { 
-                required: 'Please confirm your password',
-                validate: value => value === password || 'Passwords do not match'
-              })}
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaLock className="text-gray-400" />
+              </div>
+              <input
+                id="confirmPassword"
+                type="password"
+                className="input pl-10"
+                disabled={isLoading || success}
+                {...register('confirmPassword', { 
+                  required: 'Please confirm your password',
+                  validate: value => value === password || 'Passwords do not match'
+                })}
+              />
+            </div>
             {errors.confirmPassword && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.confirmPassword.message}</p>
             )}
@@ -129,9 +209,9 @@ function Register() {
           <button
             type="submit"
             className="btn btn-primary w-full"
-            disabled={isLoading}
+            disabled={isLoading || success}
           >
-            {isLoading ? 'Creating account...' : 'Register'}
+            {isLoading ? 'Creating account...' : success ? 'Account Created!' : 'Register'}
           </button>
         </form>
         

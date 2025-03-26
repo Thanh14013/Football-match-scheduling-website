@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
-import { FaCalendarAlt, FaFutbol, FaChartLine, FaNewspaper } from 'react-icons/fa'
+import { FaCalendarAlt, FaFutbol, FaChartLine, FaNewspaper, FaMapMarkerAlt, FaMoneyBillWave } from 'react-icons/fa'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import FadeIn from '../components/animations/FadeIn'
 import Skeleton from '../components/Skeleton'
+import { getMatchesByStatus } from '../lib/supabase'
 
 function Home() {
   const [upcomingMatches, setUpcomingMatches] = useState([])
@@ -138,6 +139,207 @@ function Home() {
     fetchData()
   }, [])
 
+  const FeaturedMatches = () => {
+    const [featuredMatches, setFeaturedMatches] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+  
+    // Dữ liệu mẫu cho Featured Matches
+    const SAMPLE_FEATURED_MATCHES = [
+      {
+        id: 1,
+        date: '2024-07-10',
+        time: '19:30:00',
+        status: 'upcoming',
+        stadiums: {
+          id: 1,
+          name: 'Old Trafford',
+          capacity: 74140,
+          price: 50.00
+        },
+        club1: {
+          id: 1,
+          name: 'Manchester United',
+          logo_url: 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg'
+        },
+        club2: {
+          id: 2,
+          name: 'Liverpool',
+          logo_url: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg'
+        }
+      },
+      {
+        id: 2,
+        date: '2024-07-12',
+        time: '20:00:00',
+        status: 'upcoming',
+        stadiums: {
+          id: 3,
+          name: 'Emirates Stadium',
+          capacity: 60704,
+          price: 55.00
+        },
+        club1: {
+          id: 3,
+          name: 'Arsenal',
+          logo_url: 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg'
+        },
+        club2: {
+          id: 4,
+          name: 'Chelsea',
+          logo_url: 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg'
+        }
+      },
+      {
+        id: 3,
+        date: '2024-07-15',
+        time: '21:00:00',
+        status: 'upcoming',
+        stadiums: {
+          id: 5,
+          name: 'Camp Nou',
+          capacity: 99354,
+          price: 65.00
+        },
+        club1: {
+          id: 5,
+          name: 'Barcelona',
+          logo_url: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg'
+        },
+        club2: {
+          id: 6,
+          name: 'Real Madrid',
+          logo_url: 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg'
+        }
+      }
+    ];
+  
+    useEffect(() => {
+      const fetchFeaturedMatches = async () => {
+        try {
+          // Lấy 3 trận đấu nổi bật (trận đấu sắp tới)
+          const matchesData = await getMatchesByStatus('upcoming');
+          
+          // Nếu không có dữ liệu, sử dụng dữ liệu mẫu
+          if (!matchesData || matchesData.length === 0) {
+            console.log('Không có dữ liệu trận đấu nổi bật, sử dụng dữ liệu mẫu');
+            setFeaturedMatches(SAMPLE_FEATURED_MATCHES);
+          } else {
+            setFeaturedMatches(matchesData.slice(0, 3));
+          }
+          
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error fetching featured matches:', error);
+          // Khi có lỗi, sử dụng dữ liệu mẫu
+          setFeaturedMatches(SAMPLE_FEATURED_MATCHES);
+          setIsLoading(false);
+        }
+      };
+  
+      fetchFeaturedMatches();
+    }, []);
+  
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="py-16 bg-gray-50 dark:bg-gray-900"
+      >
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold mb-8 text-center">Featured Matches</h2>
+          
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg animate-pulse">
+                  <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                  <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {featuredMatches.map((match, index) => (
+                <motion.div
+                  key={match.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.2 }}
+                  whileHover={{ 
+                    scale: 1.03, 
+                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                    y: -5,
+                    rotateY: 5,
+                    rotateX: -5
+                  }}
+                  className="bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-6 shadow-lg transition-all duration-30 cursor-pointer relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-14 h-14 bg-blue-600 transform rotate-45 translate-x-6 -translate-y-6"></div>
+                  
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold mb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center flex-1">
+                          <img 
+                            src={match.club1?.logo_url || 'https://via.placeholder.com/40?text=Team'}
+                            alt={match.club1?.name} 
+                            className="w-10 h-10 mr-2 object-contain"
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/40?text=Team';
+                            }}
+                          />
+                          <span>{match.club1?.name}</span>
+                        </div>
+                        <span className="mx-4 text-blue-600 font-bold">VS</span>
+                        <div className="flex items-center flex-1 justify-end">
+                          <span>{match.club2?.name}</span>
+                          <img 
+                            src={match.club2?.logo_url || 'https://via.placeholder.com/40?text=Team'}
+                            alt={match.club2?.name} 
+                            className="w-10 h-10 ml-2 object-contain"
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/40?text=Team';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </h3>
+                  </div>
+                  
+                  <p className="text-gray-600 dark:text-gray-300 flex items-center">
+                    <FaCalendarAlt className="mr-2 text-blue-600" /> 
+                    Time: {match.time}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-300 flex items-center mt-2">
+                    <FaMapMarkerAlt className="mr-2 text-blue-600" /> 
+                    Stadium: {match.stadiums?.name}
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-300 flex items-center mt-2">
+                    <FaMoneyBillWave className="mr-2 text-blue-600" /> 
+                    Tickets from ${match.stadiums?.price}
+                  </p>
+
+                  <Link to={`/book/${match.id}`}>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="mt-6 w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition-colors"
+                    >
+                      Book Tickets
+                    </motion.button>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {/* Hero Section */}
@@ -182,91 +384,7 @@ function Home() {
       </motion.div>
 
       {/* Featured Matches Section */}
-      <div className="container mx-auto px-4 py-12">
-        <FadeIn>
-          <h2 className="text-3xl font-bold mb-8 text-center">
-            <span className="relative inline-block">
-              Featured Matches
-              <span className="absolute bottom-0 left-0 w-full h-1 bg-blue-600 transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100"></span>
-            </span>
-          </h2>
-        </FadeIn>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading ? (
-            // Skeleton loading
-            [...Array(3)].map((_, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
-                <Skeleton height="24px" className="mb-4" />
-                <Skeleton height="16px" className="mb-4" />
-                <Skeleton height="16px" />
-              </div>
-            ))
-          ) : (
-            featuredMatches.map((match, index) => (
-              <motion.div
-                key={match.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.2 }}
-                whileHover={{ 
-                  scale: 1.03, 
-                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                  y: -5,
-                  rotateY: 5,
-                  rotateX: -5
-                }}
-                className="bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-6 shadow-lg transition-all duration-30 cursor-pointer relative overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-14 h-14 bg-blue-600 transform rotate-45 translate-x-6 -translate-y-6"></div>
-                
-                <div className="mb-4">
-                  <h3 className="text-xl font-semibold mb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center flex-1">
-                        <img 
-                          src={teamLogos[match.homeTeam]} 
-                          alt={match.homeTeam} 
-                          className="w-10 h-10 mr-2 object-contain"
-                          onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/40?text=Team';
-                          }}
-                        />
-                        <span>{match.homeTeam}</span>
-                      </div>
-                      <span className="mx-4 text-blue-600 font-bold">VS</span>
-                      <div className="flex items-center flex-1 justify-end">
-                        <span>{match.awayTeam}</span>
-                        <img 
-                          src={teamLogos[match.awayTeam]} 
-                          alt={match.awayTeam} 
-                          className="w-10 h-10 ml-2 object-contain"
-                          onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/40?text=Team';
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </h3>
-                </div>
-                
-                <p className="text-gray-600 dark:text-gray-300 flex items-center">
-                  <FaCalendarAlt className="mr-2 text-blue-600" /> 
-                  Time: {match.time}
-                </p>
-                <motion.button
-                  whileHover={{ scale: 1.05, backgroundColor: "#1E40AF" }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 17 }}
-                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-md"
-                >
-                  Book Tickets
-                </motion.button>
-              </motion.div>
-            ))
-          )}
-        </div>
-      </div>
+      <FeaturedMatches />
 
       {/* Stats Section */}
       <motion.div

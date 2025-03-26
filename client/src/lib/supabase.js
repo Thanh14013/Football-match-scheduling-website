@@ -1,42 +1,78 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Dùng biến môi trường hoặc giá trị mặc định
+const supabaseUrl = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL 
+  ? import.meta.env.VITE_SUPABASE_URL 
+  : process.env.SUPABASE_URL || 'https://example.supabase.co';
+  
+const supabaseAnonKey = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY
+  ? import.meta.env.VITE_SUPABASE_ANON_KEY
+  : process.env.SUPABASE_ANON_KEY || 'your-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Hàm lấy danh sách trận đấu với thông tin sân vận động
+// Hàm lấy danh sách trận đấu với thông tin sân vận động và đội bóng
 export const getMatches = async () => {
-  const { data, error } = await supabase
-    .from('matches')
-    .select(`
-      *,
-      stadiums (
-        name,
-        capacity,
-        price
-      )
-    `)
-    .order('date', { ascending: true })
-  
-  if (error) throw error
-  
-  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
-  return data.map(match => ({
-    ...match,
-    club1: match.club1 || 'Manchester United',
-    club2: match.club2 || match.opponent || 'Liverpool'
-  }))
+  try {
+    const { data, error } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        stadiums (
+          id,
+          name,
+          capacity,
+          price
+        ),
+        club1:teams!matches_club1_id_fkey (
+          id,
+          name,
+          logo_url
+        ),
+        club2:teams!matches_club2_id_fkey (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .order('date', { ascending: true })
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách trận đấu:', error);
+    return [];
+  }
+}
+
+// Hàm lấy danh sách đội bóng
+export const getTeams = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('teams')
+      .select('*')
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách đội bóng:', error);
+    return [];
+  }
 }
 
 // Hàm lấy danh sách sân vận động
 export const getStadiums = async () => {
-  const { data, error } = await supabase
-    .from('stadiums')
-    .select('*')
-  
-  if (error) throw error
-  return data
+  try {
+    const { data, error } = await supabase
+      .from('stadiums')
+      .select('*')
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách sân vận động:', error);
+    return [];
+  }
 }
 
 // Hàm thêm trận đấu mới
@@ -64,52 +100,72 @@ export const updateMatchStatus = async (matchId, status) => {
 
 // Hàm lấy danh sách trận đấu theo trạng thái
 export const getMatchesByStatus = async (status) => {
-  const { data, error } = await supabase
-    .from('matches')
-    .select(`
-      *,
-      stadiums (
-        name,
-        capacity,
-        price
-      )
-    `)
-    .eq('status', status)
-    .order('date', { ascending: true })
-  
-  if (error) throw error
-  
-  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
-  return data.map(match => ({
-    ...match,
-    club1: match.club1 || 'Manchester United',
-    club2: match.club2 || match.opponent || 'Liverpool'
-  }))
+  try {
+    const { data, error } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        stadiums (
+          id,
+          name,
+          capacity,
+          price
+        ),
+        club1:teams!matches_club1_id_fkey (
+          id,
+          name,
+          logo_url
+        ),
+        club2:teams!matches_club2_id_fkey (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .eq('status', status)
+      .order('date', { ascending: true })
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách trận đấu theo trạng thái:', error);
+    return [];
+  }
 }
 
 // Hàm lấy danh sách trận đấu theo đội bóng
-export const getMatchesByTeam = async (team) => {
-  const { data, error } = await supabase
-    .from('matches')
-    .select(`
-      *,
-      stadiums (
-        name,
-        capacity,
-        price
-      )
-    `)
-    .or(`club1.eq.${team},club2.eq.${team}`)
-    .order('date', { ascending: true })
-  
-  if (error) throw error
-  
-  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
-  return data.map(match => ({
-    ...match,
-    club1: match.club1 || 'Manchester United',
-    club2: match.club2 || match.opponent || 'Liverpool'
-  }))
+export const getMatchesByTeam = async (teamId) => {
+  try {
+    const { data, error } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        stadiums (
+          id,
+          name,
+          capacity,
+          price
+        ),
+        club1:teams!matches_club1_id_fkey (
+          id,
+          name,
+          logo_url
+        ),
+        club2:teams!matches_club2_id_fkey (
+          id,
+          name,
+          logo_url
+        )
+      `)
+      .or(`club1_id.eq.${teamId},club2_id.eq.${teamId}`)
+      .order('date', { ascending: true })
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách trận đấu theo đội bóng:', error);
+    return [];
+  }
 }
 
 // Hàm đặt vé
@@ -132,22 +188,27 @@ export const getUserBookings = async (userId) => {
       matches (
         *,
         stadiums (
-          name
+          id,
+          name,
+          capacity,
+          price
+        ),
+        club1:teams!matches_club1_id_fkey (
+          id,
+          name,
+          logo_url
+        ),
+        club2:teams!matches_club2_id_fkey (
+          id,
+          name,
+          logo_url
         )
       )
     `)
     .eq('user_id', userId)
   
   if (error) throw error
-  
-  // Dữ liệu mẫu cho trường hợp chưa cập nhật CSDL
-  return data.map(booking => {
-    if (booking.matches) {
-      booking.matches.club1 = booking.matches.club1 || 'Manchester United';
-      booking.matches.club2 = booking.matches.club2 || booking.matches.opponent || 'Liverpool';
-    }
-    return booking;
-  })
+  return data
 }
 
 // Hàm lấy thông tin profile

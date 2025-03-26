@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
 import { FaFutbol, FaSquare } from 'react-icons/fa'
 import { motion, AnimatePresence } from 'framer-motion'
-import FadeIn from '../components/animations/FadeIn'
-import Skeleton from '../components/Skeleton'
-// import LeagueSelector from '../components/LeagueSelector'
+import { useSupabase } from '../contexts/SupabaseContext'
+import LoadingScreen from '../components/LoadingScreen'
 
 // Component to select league
 const LeagueSelector = ({ selectedLeague, onChange }) => {
@@ -36,6 +34,7 @@ const LeagueSelector = ({ selectedLeague, onChange }) => {
 }
 
 function LiveScores() {
+  const { supabase } = useSupabase()
   const [liveMatches, setLiveMatches] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -64,7 +63,22 @@ function LiveScores() {
     const fetchLiveScores = async () => {
       try {
         setIsLoading(true)
-        // Simulate API call with league filter
+        setError(null)
+        
+        // Trước tiên kiểm tra kết nối với Supabase
+        try {
+          const { error } = await supabase.from('matches').select('count', { count: 'exact', head: true })
+          if (error) {
+            console.error('Lỗi kết nối Supabase:', error)
+            throw new Error('Không thể kết nối tới cơ sở dữ liệu')
+          }
+        } catch (connectionError) {
+          console.error('Lỗi kết nối:', connectionError)
+          // Nếu không kết nối được, sử dụng dữ liệu mẫu
+          console.log('Sử dụng dữ liệu mô phỏng')
+        }
+        
+        // Sử dụng dữ liệu mẫu thay vì gọi API
         const mockLiveMatches = {
           'premier-league': [
             {
@@ -83,17 +97,6 @@ function LiveScores() {
               homeScore: 0,
               awayScore: 0,
               minute: 15,
-              status: 'LIVE'
-            }
-          ],
-          'champions-league': [
-            {
-              id: 3,
-              homeTeam: 'Real Madrid',
-              awayTeam: 'Bayern Munich',
-              homeScore: 1,
-              awayScore: 1,
-              minute: 30,
               status: 'LIVE'
             }
           ],
@@ -146,16 +149,17 @@ function LiveScores() {
         setLiveMatches(mockLiveMatches[selectedLeague] || [])
         setIsLoading(false)
       } catch (error) {
-        setError('Failed to load live scores')
+        console.error('Lỗi khi tải dữ liệu:', error)
+        setError('Không thể tải dữ liệu trận đấu trực tiếp. Vui lòng thử lại sau.')
         setIsLoading(false)
       }
     }
 
     fetchLiveScores()
-    // Set up polling every 30 seconds
+    // Cập nhật dữ liệu mỗi 30 giây
     const interval = setInterval(fetchLiveScores, 30000)
     return () => clearInterval(interval)
-  }, [selectedLeague])
+  }, [selectedLeague, supabase])
 
   const renderLiveMatch = (match) => (
     <motion.div
@@ -201,52 +205,31 @@ function LiveScores() {
   )
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-3xl font-bold mb-8 text-center"
-      >
-        Live Scores
-      </motion.h1>
-
-      <LeagueSelector 
-        selectedLeague={selectedLeague}
-        onChange={setSelectedLeague}
-      />
-
-      {error && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-red-50 text-red-600 p-4 rounded-md mb-6"
-        >
-          {error}
-        </motion.div>
-      )}
-
+    <div className="container mx-auto px-4 py-6">
+      <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">
+        Trận đấu trực tiếp
+      </h1>
+      
+      <LeagueSelector selectedLeague={selectedLeague} onChange={setSelectedLeague} />
+      
       {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, index) => (
-            <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
-              <Skeleton height="24px" className="mb-4" />
-              <Skeleton height="16px" />
-            </div>
-          ))}
+        <div className="flex justify-center items-center py-12">
+          <LoadingScreen />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 text-red-600 p-4 rounded-md dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      ) : liveMatches.length === 0 ? (
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          <FaFutbol className="mx-auto text-5xl mb-4 text-gray-300 dark:text-gray-600" />
+          <p className="text-xl">Không có trận đấu trực tiếp nào trong giải đấu này</p>
         </div>
       ) : (
         <AnimatePresence>
-          {liveMatches.length > 0 ? (
-            liveMatches.map(match => renderLiveMatch(match))
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-8 text-gray-500"
-            >
-              No live matches at the moment
-            </motion.div>
-          )}
+          <div className="space-y-4">
+            {liveMatches.map(match => renderLiveMatch(match))}
+          </div>
         </AnimatePresence>
       )}
     </div>

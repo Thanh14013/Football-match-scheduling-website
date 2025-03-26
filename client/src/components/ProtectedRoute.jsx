@@ -1,19 +1,19 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useSupabase } from '../contexts/SupabaseContext'
-import LoadingSpinner from './LoadingSpinner'
+import LoadingScreen from './LoadingScreen'
 
-function ProtectedRoute({ children }) {
-  const { session, isLoading } = useSupabase()
-
-  if (isLoading) {
-    return <LoadingSpinner />
+function ProtectedRoute() {
+  const { user, loading, initialized } = useSupabase()
+  
+  if (loading || !initialized) {
+    return <LoadingScreen />
   }
 
-  if (!session) {
-    return <Navigate to="/login" />
+  if (!user) {
+    return <Navigate to="/login" replace />
   }
 
-  return children
+  return <Outlet />
 }
 
 export default ProtectedRoute
