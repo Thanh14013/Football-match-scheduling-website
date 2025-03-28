@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { FaUser, FaEnvelope, FaLock, FaPhone, FaCheckCircle } from 'react-icons/fa'
 
 function Register() {
-  const { supabase } = useSupabase()
+  const { signUp } = useSupabase()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -20,46 +20,57 @@ function Register() {
     setError(null)
     
     try {
-      // 1. Register user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      console.log("Attempting to register user with data:", {
+        email: data.email,
+        fullName: data.fullName,
+        hasPhone: !!data.phone
+      });
+      
+      // Use the signUp function from SupabaseContext
+      const { data: userData, error: signUpError } = await signUp({
         email: data.email,
         password: data.password,
-        options: {
-          data: {
-            full_name: data.fullName
-          }
-        }
-      })
+        fullName: data.fullName,
+        phone: data.phone || null
+      });
       
-      if (authError) throw authError
+      if (signUpError) {
+        console.error("Registration error:", signUpError);
+        throw signUpError;
+      }
       
-      if (authData?.user) {
-        // 2. Add additional user data to 'users' table
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([
-            {
-              id: authData.user.id,
-              email: data.email,
-              full_name: data.fullName,
-              phone: data.phone || null,
-              avatar_url: null
-            }
-          ]);
-          
-        if (profileError) throw profileError;
+      if (userData) {
+        console.log("Registration successful:", userData);
         
         // Show success message
         setSuccess(true);
+        setError(null);
         
-        // Redirect to login page after 2 seconds
+        // Redirect to login page after 2 seconds with a message
         setTimeout(() => {
-          navigate('/login');
+          // Navigate to login page with state data for showing a message
+          navigate('/login', { 
+            state: { 
+              message: 'Registration successful! You can now log in.',
+              type: 'success' 
+            }
+          });
         }, 2000);
+      } else {
+        throw new Error("No user data returned from registration");
       }
     } catch (error) {
-      console.error('Registration error:', error);
-      setError(error.message || 'An error occurred during registration');
+      console.error('Registration error details:', error);
+      
+      // Handle specific Supabase errors with user-friendly messages
+      if (error.message?.includes('email already registered')) {
+        setError('This email is already registered. Please use a different email or login.');
+      } else if (error.message?.includes('password')) {
+        setError('Password error: ' + error.message);
+      } else {
+        setError(error.message || 'An error occurred during registration. Please try again.');
+      }
+      
       setSuccess(false);
     } finally {
       setIsLoading(false);

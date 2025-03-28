@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
-import InfiniteScroll from '../components/InfiniteScroll'
-import Skeleton from '../components/Skeleton'
-import FadeIn from '../components/FadeIn'
+import { useSupabase } from '../contexts/SupabaseContext'
+import LoadingScreen from '../components/LoadingScreen'
 import { useNavigate } from 'react-router-dom'
-import { getMatches, getStadiums, getMatchesByStatus, getTeams } from '../lib/supabase'
 
-// Dữ liệu mẫu để hiển thị khi không có dữ liệu từ Supabase
+// Sample data to display when there is no data from Supabase
 const SAMPLE_MATCHES = [
   {
     id: 1,
@@ -95,9 +93,10 @@ const SAMPLE_TEAMS = [
 ];
 
 function MatchSchedule() {
-  const [matches, setMatches] = useState([])
-  const [stadiums, setStadiums] = useState([])
-  const [teams, setTeams] = useState([])
+  const { supabase } = useSupabase()
+  const [matches, setMatches] = useState(SAMPLE_MATCHES) // Start with sample data 
+  const [stadiums, setStadiums] = useState(SAMPLE_STADIUMS)
+  const [teams, setTeams] = useState(SAMPLE_TEAMS)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   
@@ -108,79 +107,156 @@ function MatchSchedule() {
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [filteredMatches, setFilteredMatches] = useState([])
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const ITEMS_PER_PAGE = 10
 
   const navigate = useNavigate()
 
-  // Team logos mapping
-  const teamLogos = {
-    'Manchester United': 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg',
-    'Liverpool': 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg',
-    'Arsenal': 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg',
-    'Chelsea': 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg',
-    'Barcelona': 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
-    'Real Madrid': 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg',
-    'Manchester City': 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg',
-    'Tottenham': 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg',
-    'Bayern Munich': 'https://upload.wikimedia.org/wikipedia/commons/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg',
-    'Borussia Dortmund': 'https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg',
-    'Juventus': 'https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg',
-    'Inter Milan': 'https://upload.wikimedia.org/wikipedia/commons/0/05/FC_Internazionale_Milano_2021.svg',
-    'PSG': 'https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg',
-    'Monaco': 'https://upload.wikimedia.org/wikipedia/en/e/ea/AS_Monaco_FC.svg'
+  // Get matches list with timeout
+  const fetchMatchesWithTimeout = async (status = 'all') => {
+    return Promise.race([
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout fetching matches')), 5000)
+      ),
+      fetchMatches(status)
+    ]);
+  }
+
+  // Function to fetch matches
+  const fetchMatches = async (status = 'all') => {
+    try {
+      let query = supabase
+        .from('matches')
+        .select(`
+          id,
+          date,
+          time,
+          status,
+          stadium_id,
+          club1_id,
+          club2_id,
+          stadiums (
+            id,
+            name,
+            capacity,
+            price
+          ),
+          club1:teams!matches_club1_id_fkey (
+            id,
+            name,
+            logo_url
+          ),
+          club2:teams!matches_club2_id_fkey (
+            id,
+            name,
+            logo_url
+          )
+        `)
+        .order('date', { ascending: true })
+        
+      // Filter by status if not 'all'
+      if (status !== 'all') {
+        query = query.eq('status', status)
+      }
+      
+      const { data, error } = await query
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching matches:', error)
+      return []
+    }
+  }
+  
+  // Function to fetch stadiums
+  const fetchStadiums = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stadiums')
+        .select('*')
+        .limit(20)
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching stadiums:', error)
+      return []
+    }
+  }
+  
+  // Function to fetch teams
+  const fetchTeams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('*')
+        .limit(20)
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching teams:', error)
+      return []
+    }
   }
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true)
-        setError(null)
         
-        // Fetch stadiums
-        const stadiumsData = await getStadiums()
-        // Nếu không có dữ liệu sân vận động, sử dụng dữ liệu mẫu
-        setStadiums(stadiumsData && stadiumsData.length > 0 ? stadiumsData : SAMPLE_STADIUMS)
+        // Immediately display sample data
+        setFilteredMatches(SAMPLE_MATCHES.slice(0, ITEMS_PER_PAGE))
         
-        // Fetch teams
-        const teamsData = await getTeams()
-        // Nếu không có dữ liệu đội bóng, sử dụng dữ liệu mẫu
-        setTeams(teamsData && teamsData.length > 0 ? teamsData : SAMPLE_TEAMS)
+        // Load real data in the background
+        let hasRealData = false;
         
-        // Fetch matches based on status
-        let matchesData
-        if (selectedStatus === 'all') {
-          matchesData = await getMatches()
-        } else {
-          matchesData = await getMatchesByStatus(selectedStatus)
+        // Perform parallel requests
+        const [stadiumsData, teamsData, matchesData] = await Promise.all([
+          fetchStadiums().catch(() => []),
+          fetchTeams().catch(() => []),
+          fetchMatchesWithTimeout(selectedStatus).catch(() => [])
+        ]);
+        
+        // Update data if fetch successful
+        if (stadiumsData.length > 0) {
+          setStadiums(stadiumsData);
+          hasRealData = true;
         }
         
-        // Nếu không có dữ liệu trận đấu, sử dụng dữ liệu mẫu
-        if (!matchesData || matchesData.length === 0) {
-          console.log('Không có dữ liệu trận đấu, sử dụng dữ liệu mẫu');
-          matchesData = SAMPLE_MATCHES
+        if (teamsData.length > 0) {
+          setTeams(teamsData);
+          hasRealData = true;
         }
         
-        setMatches(matchesData)
-        setFilteredMatches(matchesData.slice(0, 10))
-        setIsLoading(false)
+        if (matchesData.length > 0) {
+          setMatches(matchesData);
+          setFilteredMatches(matchesData.slice(0, ITEMS_PER_PAGE));
+          hasRealData = true;
+        }
+        
+        if (!hasRealData) {
+          // If no real data could be fetched, log message but keep sample data
+          console.log('Could not connect to database, using sample data');
+        }
       } catch (error) {
-        console.error('Error fetching data:', error)
-        setError('Failed to load match schedule. Please try again later.')
-        
-        // Sử dụng dữ liệu mẫu khi có lỗi
-        setStadiums(SAMPLE_STADIUMS)
-        setTeams(SAMPLE_TEAMS)
-        setMatches(SAMPLE_MATCHES)
-        setFilteredMatches(SAMPLE_MATCHES.slice(0, 10))
-        
+        console.error('Error loading data:', error);
+        // Don't show error as we're displaying sample data
+      } finally {
         setIsLoading(false)
       }
     }
 
     fetchData()
-  }, [selectedStatus])
+  }, [supabase, selectedStatus])
 
+  // Filter matches list
   useEffect(() => {
-    let filtered = matches || [];
+    if (!matches || matches.length === 0) return;
+    
+    let filtered = [...matches];
 
     if (searchTerm) {
       filtered = filtered.filter(match => 
@@ -208,129 +284,94 @@ function MatchSchedule() {
       )
     }
 
-    setFilteredMatches(filtered.slice(0, 10))
-  }, [matches, searchTerm, selectedStadium, selectedTeam, selectedDate])
+    setFilteredMatches(filtered.slice(0, page * ITEMS_PER_PAGE))
+    setHasMore(filtered.length > page * ITEMS_PER_PAGE)
+  }, [matches, searchTerm, selectedStadium, selectedTeam, selectedDate, page])
 
-  const renderMatchCard = (match) => {
-    if (!match || !match.stadiums || !match.club1 || !match.club2) return null;
-    
-    // Get home team and away team
-    const homeTeam = match.club1.name;
-    const awayTeam = match.club2.name;
-    const stadium = match.stadiums.name;
-    
-    return (
-      <FadeIn key={match.id}>
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6"
-        >
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {format(new Date(match.date), 'dd/MM/yyyy')}
-            </span>
-            <span className="text-sm text-gray-500 dark:text-gray-400">{match.time}</span>
-          </div>
-          
-          <div className="text-sm text-gray-600 dark:text-gray-300 text-center mb-2">{stadium}</div>
-          
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <img 
-                src={match.club1.logo_url || `https://via.placeholder.com/40?text=${homeTeam.charAt(0)}`} 
-                alt={homeTeam} 
-                className="w-10 h-10 mr-2 object-contain"
-                onError={(e) => {
-                  e.target.src = `https://via.placeholder.com/40?text=${homeTeam.charAt(0)}`;
-                }}
-              />
-              <div className="text-lg font-semibold">{homeTeam}</div>
-            </div>
-            <div className="px-4 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm font-bold">VS</div>
-            <div className="flex items-center">
-              <div className="text-lg font-semibold">{awayTeam}</div>
-              <img 
-                src={match.club2.logo_url || `https://via.placeholder.com/40?text=${awayTeam.charAt(0)}`} 
-                alt={awayTeam} 
-                className="w-10 h-10 ml-2 object-contain"
-                onError={(e) => {
-                  e.target.src = `https://via.placeholder.com/40?text=${awayTeam.charAt(0)}`;
-                }}
-              />
-            </div>
-          </div>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="mt-4 w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition-colors"
-            onClick={() => navigate(`/book/${match.id}`)}
-          >
-            Book Tickets
-          </motion.button>
-        </motion.div>
-      </FadeIn>
-    );
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm, selectedStadium, selectedTeam, selectedDate, selectedStatus])
+
+  // Load more data when scrolling
+  const loadMore = () => {
+    if (hasMore) {
+      setPage(prevPage => prevPage + 1)
+    }
+  }
+
+  // Book ticket function
+  const handleBookTicket = (matchId) => {
+    navigate(`/book-match?matchId=${matchId}`)
+  }
+
+  // Format date and time
+  const formatDateTime = (date, time) => {
+    try {
+      if (!date || !time) return 'Not specified';
+      const dateTime = new Date(`${date}T${time}`)
+      return format(dateTime, 'PPPp')
+    } catch (error) {
+      return `${date || ''} ${time || ''}`
+    }
+  }
+
+  // Status color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
+      case 'live':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300'
+      case 'completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+    }
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="container mx-auto px-4 py-8"
-    >
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-3xl font-bold mb-8 text-center"
-      >
-        Match Schedule
-      </motion.h1>
-
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">Match Schedule</h1>
+      
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 dark:bg-red-900/20 dark:text-red-400">
           {error}
         </div>
       )}
       
-      {/* Filters */}
-      <div className="card p-4 mb-6">
-        <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* Filter bar */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Search input */}
           <div>
-            <input
-              type="text"
-              placeholder="Search by team name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="date-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Date
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Search
             </label>
             <input
-              id="date-filter"
-              type="date"
-              className="w-full p-2 border rounded"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              type="text"
+              id="search"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="Search teams, stadiums..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           
+          {/* Stadium filter */}
           <div>
-            <label htmlFor="stadium-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="stadium" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Stadium
             </label>
             <select
-              id="stadium-filter"
-              className="w-full p-2 border rounded"
+              id="stadium"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               value={selectedStadium}
               onChange={(e) => setSelectedStadium(e.target.value)}
             >
-              <option>All Stadiums</option>
+              <option value="All Stadiums">All Stadiums</option>
               {stadiums.map(stadium => (
                 <option key={stadium.id} value={stadium.name}>
                   {stadium.name}
@@ -338,18 +379,19 @@ function MatchSchedule() {
               ))}
             </select>
           </div>
-
+          
+          {/* Team filter */}
           <div>
-            <label htmlFor="team-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="team" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Team
             </label>
             <select
-              id="team-filter"
-              className="w-full p-2 border rounded"
+              id="team"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
             >
-              <option>All Teams</option>
+              <option value="All Teams">All Teams</option>
               {teams.map(team => (
                 <option key={team.id} value={team.name}>
                   {team.name}
@@ -357,39 +399,144 @@ function MatchSchedule() {
               ))}
             </select>
           </div>
-
+          
+          {/* Date filter */}
           <div>
-            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Date
+            </label>
+            <input
+              type="date"
+              id="date"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+          
+          {/* Status filter */}
+          <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Status
             </label>
             <select
-              id="status-filter"
-              className="w-full p-2 border rounded"
+              id="status"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
             >
-              <option value="all">All Matches</option>
-              <option value="completed">Completed</option>
-              <option value="live">Live</option>
+              <option value="all">All</option>
               <option value="upcoming">Upcoming</option>
+              <option value="live">Live</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
         </div>
       </div>
-
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredMatches.map(renderMatchCard)}
+      
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="flex justify-center items-center py-8">
+          <LoadingScreen />
         </div>
       )}
-    </motion.div>
-  );
+      
+      {/* Match list */}
+      {filteredMatches.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-xl text-gray-500 dark:text-gray-400">
+            No matches found with the current filters
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {filteredMatches.map((match) => (
+            <div
+              key={match.id}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
+            >
+              <div className="p-4 md:p-6">
+                <div className="flex flex-col md:flex-row items-center">
+                  {/* Home team */}
+                  <div className="w-full md:w-2/5 flex flex-col items-center md:items-end mb-4 md:mb-0">
+                    <div className="flex flex-col items-center md:items-end">
+                      <div className="w-16 h-16 mb-2">
+                        <img 
+                          src={match.club1?.logo_url || `https://via.placeholder.com/128?text=${(match.club1?.name || 'T').charAt(0)}`}
+                          alt={match.club1?.name || 'Home Team'}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.src = `https://via.placeholder.com/128?text=${(match.club1?.name || 'T').charAt(0)}`;
+                          }}
+                        />
+                      </div>
+                      <h3 className="text-lg font-semibold text-center md:text-right">{match.club1?.name || 'Home Team'}</h3>
+                    </div>
+                  </div>
+                  
+                  {/* Match info center */}
+                  <div className="w-full md:w-1/5 flex flex-col items-center px-4">
+                    <div className={`text-sm font-medium px-3 py-1 rounded-full mb-2 ${getStatusColor(match.status)}`}>
+                      {match.status === 'upcoming' ? 'Upcoming' : 
+                       match.status === 'live' ? 'Live' : 
+                       match.status === 'completed' ? 'Completed' : 
+                       match.status === 'cancelled' ? 'Cancelled' : match.status}
+                    </div>
+                    <div className="text-2xl font-bold mb-2">VS</div>
+                    <div className="text-center mb-2">
+                      <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {formatDateTime(match.date, match.time)}
+                      </div>
+                    </div>
+                    <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      {match.stadiums?.name || 'Stadium'}
+                    </div>
+                    {match.status === 'upcoming' && (
+                      <button
+                        onClick={() => handleBookTicket(match.id)}
+                        className="btn btn-sm btn-primary"
+                      >
+                        Book Tickets
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Away team */}
+                  <div className="w-full md:w-2/5 flex flex-col items-center md:items-start">
+                    <div className="flex flex-col items-center md:items-start">
+                      <div className="w-16 h-16 mb-2">
+                        <img 
+                          src={match.club2?.logo_url || `https://via.placeholder.com/128?text=${(match.club2?.name || 'T').charAt(0)}`}
+                          alt={match.club2?.name || 'Away Team'}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.src = `https://via.placeholder.com/128?text=${(match.club2?.name || 'T').charAt(0)}`;
+                          }}
+                        />
+                      </div>
+                      <h3 className="text-lg font-semibold text-center md:text-left">{match.club2?.name || 'Away Team'}</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {hasMore && (
+            <div className="text-center py-4">
+              <button 
+                onClick={loadMore}
+                className="btn btn-outline-primary"
+              >
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
-export default MatchSchedule;
+export default MatchSchedule

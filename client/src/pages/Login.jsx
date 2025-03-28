@@ -1,33 +1,65 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useSupabase } from '../contexts/SupabaseContext'
 import { useForm } from 'react-hook-form'
-import { FaEnvelope, FaLock, FaExclamationCircle } from 'react-icons/fa'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { FaEnvelope, FaLock, FaExclamationTriangle } from 'react-icons/fa'
 
 function Login() {
-  const { supabase } = useSupabase()
+  const { signIn } = useSupabase()
   const navigate = useNavigate()
+  const location = useLocation()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || null)
+  const [successType, setSuccessType] = useState(location.state?.type || 'info')
   
   const { register, handleSubmit, formState: { errors } } = useForm()
+
+  // Clear the location state after reading it
+  useEffect(() => {
+    if (location.state?.message) {
+      // Reset the location state to avoid showing the message after a page refresh
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   const onSubmit = async (data) => {
     setIsLoading(true)
     setError(null)
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: userData, error: signInError } = await signIn({
         email: data.email,
-        password: data.password
+        password: data.password,
       })
       
-      if (error) throw error
+      if (signInError) {
+        // Kiểm tra nếu lỗi là do email chưa xác nhận
+        if (signInError.message?.includes('Email not confirmed')) {
+          console.log('Email chưa được xác nhận, đang cố gắng đăng nhập tự động...');
+          // Email không được xác nhận, logic xử lý được di chuyển vào SupabaseContext
+          throw signInError;
+        } else {
+          throw signInError;
+        }
+      }
       
-      navigate('/')
+      if (userData) {
+        console.log('Login successful')
+        navigate('/')
+      }
     } catch (error) {
-      setError(error.message || 'An error occurred during login')
+      console.error('Login error:', error)
+      
+      // Handle specific Supabase errors with user-friendly messages
+      if (error.message?.includes('Invalid login credentials')) {
+        setError('Incorrect email or password. Please try again.')
+      } else if (error.message?.includes('Email not confirmed')) {
+        setError('Your email is not confirmed. Please check your inbox or try again.')
+      } else {
+        setError(error.message || 'An error occurred during login. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -35,23 +67,31 @@ function Login() {
 
   return (
     <div className="max-w-md mx-auto">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="card p-8"
-      >
+      <div className="card p-8">
         <h1 className="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">Log In</h1>
         
+        <AnimatePresence>
+          {successMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`p-3 rounded-md mb-4 flex items-center ${
+                successType === 'success' 
+                  ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' 
+                  : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+              }`}
+            >
+              {successMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         {error && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 text-red-600 p-3 rounded-md mb-4 dark:bg-red-900/20 dark:text-red-400 flex items-center"
-          >
-            <FaExclamationCircle className="mr-2" />
+          <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 dark:bg-red-900/20 dark:text-red-400 flex items-center">
+            <FaExclamationTriangle className="mr-2" />
             <span>{error}</span>
-          </motion.div>
+          </div>
         )}
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -87,9 +127,9 @@ function Login() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Password
               </label>
-              <a href="#" className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+              <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                 Forgot password?
-              </a>
+              </Link>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -108,24 +148,22 @@ function Login() {
             )}
           </div>
           
-          <motion.button
+          <button
             type="submit"
             className="btn btn-primary w-full"
             disabled={isLoading}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
           >
             {isLoading ? 'Logging in...' : 'Log In'}
-          </motion.button>
+          </button>
         </form>
         
-        <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+        <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
           Don't have an account?{' '}
           <Link to="/register" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
             Register
           </Link>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }
