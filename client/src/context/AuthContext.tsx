@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
 
@@ -61,7 +61,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    return await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error };
+    if (data.user) {
+      // Sau khi đăng ký thành công, tạo profile cho user
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({ id: data.user.id, email });
+      if (profileError) return { error: profileError };
+    }
+    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {

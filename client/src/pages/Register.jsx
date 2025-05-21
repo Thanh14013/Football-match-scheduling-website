@@ -20,13 +20,13 @@ function Register() {
     setError(null)
     
     try {
-      console.log("Attempting to register user with data:", {
+      console.log("Đang đăng ký tài khoản:", {
         email: data.email,
         fullName: data.fullName,
         hasPhone: !!data.phone
       });
       
-      // Use the signUp function from SupabaseContext
+      // Đăng ký tài khoản mới
       const { data: userData, error: signUpError } = await signUp({
         email: data.email,
         password: data.password,
@@ -35,40 +35,40 @@ function Register() {
       });
       
       if (signUpError) {
-        console.error("Registration error:", signUpError);
+        console.error("Lỗi đăng ký:", signUpError);
         throw signUpError;
       }
       
       if (userData) {
-        console.log("Registration successful:", userData);
+        console.log("Đăng ký thành công:", userData);
         
-        // Show success message
+        // Hiển thị thông báo thành công
         setSuccess(true);
         setError(null);
         
-        // Redirect to login page after 2 seconds with a message
+        // Đợi một khoảng thời gian ngắn để người dùng thấy thông báo thành công
         setTimeout(() => {
-          // Navigate to login page with state data for showing a message
+          // Chuyển hướng đến trang đăng nhập và truyền thông báo
           navigate('/login', { 
             state: { 
-              message: 'Registration successful! You can now log in.',
+              message: 'Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.',
               type: 'success' 
             }
           });
         }, 2000);
       } else {
-        throw new Error("No user data returned from registration");
+        throw new Error("Không nhận được dữ liệu người dùng từ quá trình đăng ký");
       }
     } catch (error) {
-      console.error('Registration error details:', error);
+      console.error('Chi tiết lỗi đăng ký:', error);
       
-      // Handle specific Supabase errors with user-friendly messages
+      // Xử lý các loại lỗi cụ thể
       if (error.message?.includes('email already registered')) {
-        setError('This email is already registered. Please use a different email or login.');
+        setError('Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.');
       } else if (error.message?.includes('password')) {
-        setError('Password error: ' + error.message);
+        setError('Lỗi mật khẩu: ' + error.message);
       } else {
-        setError(error.message || 'An error occurred during registration. Please try again.');
+        setError(error.message || 'Đã xảy ra lỗi trong quá trình đăng ký. Vui lòng thử lại.');
       }
       
       setSuccess(false);
@@ -80,7 +80,7 @@ function Register() {
   return (
     <div className="max-w-md mx-auto">
       <div className="card p-8">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">Create an Account</h1>
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800 dark:text-white">Tạo tài khoản mới</h1>
         
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 dark:bg-red-900/20 dark:text-red-400">
@@ -95,14 +95,14 @@ function Register() {
             className="bg-green-50 text-green-600 p-3 rounded-md mb-4 dark:bg-green-900/20 dark:text-green-400 flex items-center"
           >
             <FaCheckCircle className="mr-2" /> 
-            <span>Registration successful! Redirecting to login...</span>
+            <span>Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...</span>
           </motion.div>
         )}
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Full Name
+              Họ và tên
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -113,7 +113,7 @@ function Register() {
                 type="text"
                 className="input pl-10"
                 disabled={isLoading || success}
-                {...register('fullName', { required: 'Full name is required' })}
+                {...register('fullName', { required: 'Họ và tên không được để trống' })}
               />
             </div>
             {errors.fullName && (
@@ -135,10 +135,10 @@ function Register() {
                 className="input pl-10"
                 disabled={isLoading || success}
                 {...register('email', { 
-                  required: 'Email is required',
+                  required: 'Email không được để trống',
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Invalid email address'
+                    message: 'Địa chỉ email không hợp lệ'
                   }
                 })}
               />
@@ -150,7 +150,7 @@ function Register() {
           
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Phone Number (optional)
+              Số điện thoại (tùy chọn)
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -168,7 +168,7 @@ function Register() {
           
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Password
+              Mật khẩu
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -180,10 +180,10 @@ function Register() {
                 className="input pl-10"
                 disabled={isLoading || success}
                 {...register('password', { 
-                  required: 'Password is required',
+                  required: 'Mật khẩu không được để trống',
                   minLength: {
                     value: 6,
-                    message: 'Password must be at least 6 characters'
+                    message: 'Mật khẩu phải có ít nhất 6 ký tự'
                   }
                 })}
               />
@@ -195,7 +195,7 @@ function Register() {
           
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Confirm Password
+              Xác nhận mật khẩu
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -207,8 +207,8 @@ function Register() {
                 className="input pl-10"
                 disabled={isLoading || success}
                 {...register('confirmPassword', { 
-                  required: 'Please confirm your password',
-                  validate: value => value === password || 'Passwords do not match'
+                  required: 'Vui lòng xác nhận mật khẩu',
+                  validate: value => value === password || 'Mật khẩu không khớp'
                 })}
               />
             </div>
@@ -222,14 +222,14 @@ function Register() {
             className="btn btn-primary w-full"
             disabled={isLoading || success}
           >
-            {isLoading ? 'Creating account...' : success ? 'Account Created!' : 'Register'}
+            {isLoading ? 'Đang tạo tài khoản...' : success ? 'Đã tạo tài khoản!' : 'Đăng ký'}
           </button>
         </form>
         
         <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-          Already have an account?{' '}
+          Đã có tài khoản?{' '}
           <Link to="/login" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
-            Log In
+            Đăng nhập
           </Link>
         </div>
       </div>

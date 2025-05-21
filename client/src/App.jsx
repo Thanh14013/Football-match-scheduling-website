@@ -14,6 +14,9 @@ const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const Profile = lazy(() => import('./pages/Profile'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
+// Import lazy-loaded components for new pages
+const PaymentPage = lazy(() => import('./pages/PaymentPage'))
+const BookingHistory = lazy(() => import('./pages/BookingHistory'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 function App() {
@@ -56,6 +59,10 @@ function App() {
               <Route path="book-match" element={<BookMatch />} />
               <Route path="profile" element={<Profile />} />
               <Route path="change-password" element={<ChangePassword />} />
+              {/* Thêm route cho trang thanh toán */}
+              <Route path="payment" element={<PaymentPage />} />
+              {/* Thêm route cho trang lịch sử đặt vé */}
+              <Route path="booking-history" element={<BookingHistory />} />
             </Route>
             
             {/* Trang 404 */}

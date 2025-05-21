@@ -93,7 +93,7 @@ const SAMPLE_TEAMS = [
 ];
 
 function MatchSchedule() {
-  const { supabase } = useSupabase()
+  const { supabase, user } = useSupabase()
   const [matches, setMatches] = useState(SAMPLE_MATCHES) // Start with sample data 
   const [stadiums, setStadiums] = useState(SAMPLE_STADIUMS)
   const [teams, setTeams] = useState(SAMPLE_TEAMS)
@@ -205,13 +205,8 @@ function MatchSchedule() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setIsLoading(true)
-        
-        // Immediately display sample data
-        setFilteredMatches(SAMPLE_MATCHES.slice(0, ITEMS_PER_PAGE))
-        
-        // Load real data in the background
-        let hasRealData = false;
+        setIsLoading(true);
+        setError(null); // Clear previous errors
         
         // Perform parallel requests
         const [stadiumsData, teamsData, matchesData] = await Promise.all([
@@ -221,6 +216,7 @@ function MatchSchedule() {
         ]);
         
         // Update data if fetch successful
+        let hasRealData = false;
         if (stadiumsData.length > 0) {
           setStadiums(stadiumsData);
           hasRealData = true;
@@ -232,29 +228,42 @@ function MatchSchedule() {
         }
         
         if (matchesData.length > 0) {
-          setMatches(matchesData);
-          setFilteredMatches(matchesData.slice(0, ITEMS_PER_PAGE));
+          setMatches(matchesData); // Update main matches state with real data
+          // setFilteredMatches will be updated by the filtering useEffect
           hasRealData = true;
         }
         
         if (!hasRealData) {
-          // If no real data could be fetched, log message but keep sample data
-          console.log('Could not connect to database, using sample data');
+          // If no real data could be fetched, show an error and potentially use sample data if desired later
+          setError('Could not load data from the database. Please try again.');
+          // Optionally, you could set sample data here as a fallback, but for now, show error.
+          setMatches([]); // Clear matches if real data fetch failed
+          setFilteredMatches([]);
+        } else {
+          // If real data was fetched, ensure filteredMatches is updated based on the filters and real data
+          // The filtering useEffect depends on 'matches' and filter states, so it will run after setMatches
         }
       } catch (error) {
         console.error('Error loading data:', error);
-        // Don't show error as we're displaying sample data
+        setError('An error occurred while loading data.');
+        setMatches([]); // Clear matches on error
+        setFilteredMatches([]);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [supabase, selectedStatus])
+    fetchData();
+  }, [supabase, selectedStatus]); // Depend on supabase and selectedStatus
 
-  // Filter matches list
+  // Filter matches list - depends on 'matches' state
   useEffect(() => {
-    if (!matches || matches.length === 0) return;
+    // This effect runs whenever 'matches' or any filter state changes
+    if (!matches || matches.length === 0) {
+       setFilteredMatches([]);
+       setHasMore(false);
+       return;
+    }
     
     let filtered = [...matches];
 
@@ -301,8 +310,12 @@ function MatchSchedule() {
   }
 
   // Book ticket function
-  const handleBookTicket = (matchId) => {
-    navigate(`/book-match?matchId=${matchId}`)
+  const handleBookTicket = (match) => {
+    if (!user) {
+      navigate('/login');
+    } else {
+      navigate('/book-match', { state: { match: match } });
+    }
   }
 
   // Format date and time
@@ -494,7 +507,7 @@ function MatchSchedule() {
                     </div>
                     {match.status === 'upcoming' && (
                       <button
-                        onClick={() => handleBookTicket(match.id)}
+                        onClick={() => handleBookTicket(match)}
                         className="btn btn-sm btn-primary"
                       >
                         Book Tickets

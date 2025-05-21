@@ -51,7 +51,7 @@ function Navbar({ darkMode, toggleDarkMode }) {
               <Link to="/schedule" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Schedule</Link>
               <Link to="/live-scores" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Live Scores</Link>
               {session && (
-                <Link to="/book-match" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Book Match</Link>
+                <Link to="/booking-history" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Booking History</Link>
               )}
             </div>
           </div>
@@ -98,9 +98,6 @@ function Navbar({ darkMode, toggleDarkMode }) {
                     <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
                       <FaUser className="mr-2" /> Profile
                     </Link>
-                    <Link to="/bookings" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
-                      <FaTicketAlt className="mr-2" /> My Bookings
-                    </Link>
                     <Link to="/change-password" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
                       <FaLock className="mr-2" /> Change Password
                     </Link>
@@ -146,7 +143,7 @@ function Navbar({ darkMode, toggleDarkMode }) {
             <Link to="/schedule" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Schedule</Link>
             <Link to="/live-scores" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Live Scores</Link>
             {session && (
-              <Link to="/book-match" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Book Match</Link>
+              <Link to="/booking-history" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Booking History</Link>
             )}
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
@@ -170,9 +167,6 @@ function Navbar({ darkMode, toggleDarkMode }) {
                 )}
                 <Link to="/profile" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white flex items-center">
                   <FaUser className="mr-2" /> Profile
-                </Link>
-                <Link to="/bookings" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white flex items-center">
-                  <FaTicketAlt className="mr-2" /> My Bookings
                 </Link>
                 <Link to="/change-password" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white flex items-center">
                   <FaLock className="mr-2" /> Change Password
